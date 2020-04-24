@@ -37,6 +37,9 @@
 #include "stdio-wrapper.h"
 #include "haar.h"
 
+#include <chrono> 
+#include <iostream>
+
 #define INPUT_FILENAME "Face.pgm"
 #define OUTPUT_FILENAME "Output.pgm"
 
@@ -45,6 +48,8 @@ using namespace std;
 
 int main (int argc, char *argv[]) 
 {
+
+	using namespace std::chrono; 
 
 	int flag;
 	
@@ -71,6 +76,9 @@ int main (int argc, char *argv[])
 	}
 
 	printf("-- loading cascade classifier --\r\n");
+
+	/* start timer */
+	auto start = high_resolution_clock::now(); 
 
 	myCascade cascadeObj;
 	myCascade *cascade = &cascadeObj;
@@ -106,6 +114,13 @@ int main (int argc, char *argv[])
 	/* delete image and free classifier */
 	releaseTextClassifier();
 	freeImage(image);
+
+	/* stop timer and print out time */
+	auto stop = high_resolution_clock::now();
+	auto duration = duration_cast<microseconds>(stop - start); 
+	cout << "Time taken by function: "
+         << duration.count() << " microseconds" << endl; 
+  
 
 	return 0;
 }

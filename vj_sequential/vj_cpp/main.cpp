@@ -68,7 +68,7 @@ int main (int argc, char *argv[])
 	MyImage imageObj;
 	MyImage *image = &imageObj;
 
-	flag = readPgm((char *)"nasa.pgm", image);
+	flag = readPgm((char *)"Face.pgm", image);
 	if (flag == -1)
 	{
 		printf( "Unable to open input image\n");
@@ -77,6 +77,7 @@ int main (int argc, char *argv[])
 
 	printf("-- loading cascade classifier --\r\n");
 
+	/* start timer */
 	auto start = high_resolution_clock::now(); 
 
 	myCascade cascadeObj;
@@ -113,6 +114,8 @@ int main (int argc, char *argv[])
 	/* delete image and free classifier */
 	releaseTextClassifier();
 	freeImage(image);
+
+	/* stop timer and print out time */
 	auto stop = high_resolution_clock::now();
 	auto duration = duration_cast<microseconds>(stop - start); 
 	cout << "Time taken by function: "
