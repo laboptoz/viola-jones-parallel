@@ -118,7 +118,7 @@ int main (int argc, char *argv[])
 	/* stop timer and print out time */
 	auto stop = high_resolution_clock::now();
 	auto duration = duration_cast<microseconds>(stop - start); 
-	cout << "Time taken by function: "
+	cout << "Total Execution Time: "
          << duration.count() << " microseconds" << endl; 
   
 
