@@ -13,7 +13,7 @@ stdio.o: stdio-wrapper.c $(HEADERS)
 	$(GCC) -o $@ -c $<
 
 main.o: main.cpp $(HEADERS)
-	$(GCC) -o $@ -c $<
+	$(GCC) -std=c++11 -o $@ -c $<
 
 haar.o: haar.cpp $(HEADERS)
 	$(GCC) -o $@ -c $<
