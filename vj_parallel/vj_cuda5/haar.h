@@ -2,6 +2,10 @@
  *  TU Eindhoven
  *  Eindhoven, The Netherlands
  *
+/*
+ *  TU Eindhoven
+ *  Eindhoven, The Netherlands
+ *
  *  Name            :   haar.h
  *
  *  Author          :   Francesco Comaschi (f.comaschi@tue.nl)

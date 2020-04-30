@@ -1,3 +1,6 @@
+
+
+
 /*
  *  TU Eindhoven
  *  Eindhoven, The Netherlands
@@ -73,7 +76,7 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
 void nearestNeighbor (MyImage *src, MyImage *dst);
 
 /* rounding function */
-inline  int  myRound( float value )
+inline  int  myRound( float value ) 
 {
   return (int)(value + (value >= 0 ? 0.5 : -0.5));
 }
@@ -231,8 +234,8 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
       /* To do: your GPU function here */
       dim3 threads = dim3(64, 1);
       dim3 grid = dim3(filter_count/64, 1);
-      gpu_function_1<<< grid, threads >>>();
-      gpu_function_2<<< grid, threads >>>();
+      //gpu_function_1<<< grid, threads >>>();
+      //gpu_function_2<<< grid, threads >>>();
       /* and more functions */
       /* free GPU memory */
       cudaFree(gpu_cascade);
@@ -604,38 +607,53 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
  * More info:
  * http://en.wikipedia.org/wiki/Summed_area_table
  ****************************************************/
-void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum )
-{
-  int x, y, s, sq, t, tq;
-  unsigned char it;
-  int height = src->height;
-  int width = src->width;
-  unsigned char *data = src->data;
-  int * sumData = sum->data;
-  int * sqsumData = sqsum->data;
-  for( y = 0; y < height; y++)
-    {
-      s = 0;
-      sq = 0;
-      /* loop over the number of columns */
-      for( x = 0; x < width; x ++)
-	{
-	  it = data[y*width+x];
-	  /* sum of the current row (integer)*/
-	  s += it; 
-	  sq += it*it;
+void integralImages(MyImage *src, MyIntImage *sum, MyIntImage *sqsum){
 
-	  t = s;
-	  tq = sq;
-	  if (y != 0)
-	    {
-	      t += sumData[(y-1)*width+x];
-	      tq += sqsumData[(y-1)*width+x];
-	    }
-	  sumData[y*width+x]=t;
-	  sqsumData[y*width+x]=tq;
+	int height = src->height;
+	int width = src->width;
+
+	int size = height*width;
+
+	int* sum_data = sum->data;
+	int* sqsum_data = sqsum->data;
+	unsigned char * data = src->data;
+	
+	int *sumdata_cuda;
+	int *sqsumdata_cuda;
+	unsigned char * data_cuda;
+
+	
+	cudaMalloc((void **)&sumdata_cuda,sizeof(int)*size);
+	cudaMalloc((void **)&sqsumdata_cuda,sizeof(int)*size);		
+	cudaMalloc((void **)&data_cuda,sizeof(unsigned char)*size);
+	
+	cudaMemcpy(data_cuda, data, sizeof(unsigned char)*size, cudaMemcpyHostToDevice);
+
+
+	int blocks, threadsPerBlock;
+	
+	if (height>256){
+		blocks = ceil(height/256);
+		threadsPerBlock = 256;
+	} else {
+		blocks = 1;
+		threadsPerBlock = 256;
 	}
-    }
+
+
+	integralImageRows<<<blocks,threadsPerBlock>>>(sumdata_cuda, sqsumdata_cuda, data_cuda, width, height);
+	cudaDeviceSynchronize();
+	integralImageCols<<<blocks,threadsPerBlock>>>(sumdata_cuda, sqsumdata_cuda, width, height);
+	cudaDeviceSynchronize();
+
+
+	cudaMemcpy(sum_data, sumdata_cuda, sizeof(int)*size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(sqsum_data, sqsumdata_cuda, sizeof(int)*size, cudaMemcpyDeviceToHost);
+
+	cudaFree(sumdata_cuda);
+	cudaFree(sqsumdata_cuda);
+	cudaFree(data_cuda);
+
 }
 
 /***********************************************************
