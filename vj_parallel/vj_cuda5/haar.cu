@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include "stdio-wrapper.h"
 
+
 /* include the gpu functions */
 #include "gpu_functions.cuh"
 
@@ -84,7 +85,7 @@ inline  int  myRound( float value )
  ******************************************************/
 
 std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize, myCascade* cascade,
-				   float scaleFactor, int minNeighbors)
+           float scaleFactor, int minNeighbors)
 {
 
   /* group overlaping windows */
@@ -159,11 +160,11 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
 
       /* if the actual scaled image is smaller than the original detection window, break */
       if( sz1.width < 0 || sz1.height < 0 )
-	break;
+        break;
 
       /* if a minSize different from the original detection window is specified, continue to the next scaling */
       if( winSize.width < minSize.width || winSize.height < minSize.height )
-	continue;
+        continue;
 
       /*************************************
        * Set the width and height of 
@@ -213,32 +214,7 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
        * the same cascade filter is invoked each time
        ***************************************************/
       ScaleImage_Invoker(cascade, factor, sum1->height, sum1->width,
-			 allCandidates);
-
-      /*********************************************
-       * For the 5kk73 assignment,
-       * here is a skeleton
-       ********************************************/
-      /* malloc cascade filter on GPU memory*/
-      int filter_count = 0;
-      for(int i = 0; i < cascade->n_stages; i++ ){
-	filter_count += stages_array[i];
-      }
-      int size_per_filter = 18;
-      int* gpu_cascade;
-      cudaMalloc((void**) &gpu_cascade, filter_count*size_per_filter*sizeof(int));
-      /* To do: you need to memcpy filter parameters to GPU */
-      /* To do: your GPU function here */
-      dim3 threads = dim3(64, 1);
-      dim3 grid = dim3(filter_count/64, 1);
-      gpu_function_1<<< grid, threads >>>();
-      gpu_function_2<<< grid, threads >>>();
-      /* and more functions */
-      /* free GPU memory */
-      cudaFree(gpu_cascade);
-      /*********************************************
-       * End of the GPU skeleton
-       ********************************************/
+       allCandidates);
 
     } /* end of the factor loop, finish all scales in pyramid*/
 
@@ -282,10 +258,10 @@ unsigned int int_sqrt (unsigned int value)
       a <<= 1;
       b = (a<<1) | 1;
       if (c >= b)
-	{
-	  c -= b;
-	  a++;
-	}
+      {
+        c -= b;
+        a++;
+      }
     }
   return a;
 }
@@ -330,43 +306,43 @@ void setImageForCascadeClassifier( myCascade* _cascade, MyIntImage* _sum, MyIntI
     {
       /* loop over the number of haar features */
       for( j = 0; j < stages_array[i]; j++ )
-	{
-	  int nr = 3;
-	  /* loop over the number of rectangles */
-	  for( k = 0; k < nr; k++ )
-	    {
-	      tr.x = rectangles_array[r_index + k*4];
-	      tr.width = rectangles_array[r_index + 2 + k*4];
-	      tr.y = rectangles_array[r_index + 1 + k*4];
-	      tr.height = rectangles_array[r_index + 3 + k*4];
-	      if (k < 2)
-		{
-		  scaled_rectangles_array[r_index + k*4] = (sum->data + sum->width*(tr.y ) + (tr.x )) ;
-		  scaled_rectangles_array[r_index + k*4 + 1] = (sum->data + sum->width*(tr.y ) + (tr.x  + tr.width)) ;
-		  scaled_rectangles_array[r_index + k*4 + 2] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x ));
-		  scaled_rectangles_array[r_index + k*4 + 3] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x  + tr.width));
-		}
-	      else
-		{
-		  if ((tr.x == 0)&& (tr.y == 0) &&(tr.width == 0) &&(tr.height == 0))
-		    {
-		      scaled_rectangles_array[r_index + k*4] = NULL ;
-		      scaled_rectangles_array[r_index + k*4 + 1] = NULL ;
-		      scaled_rectangles_array[r_index + k*4 + 2] = NULL;
-		      scaled_rectangles_array[r_index + k*4 + 3] = NULL;
-		    }
-		  else
-		    {
-		      scaled_rectangles_array[r_index + k*4] = (sum->data + sum->width*(tr.y ) + (tr.x )) ;
-		      scaled_rectangles_array[r_index + k*4 + 1] = (sum->data + sum->width*(tr.y ) + (tr.x  + tr.width)) ;
-		      scaled_rectangles_array[r_index + k*4 + 2] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x ));
-		      scaled_rectangles_array[r_index + k*4 + 3] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x  + tr.width));
-		    }
-		} /* end of branch if(k<2) */
-	    } /* end of k loop*/
-	  r_index+=12;
-	  w_index+=3;
-	} /* end of j loop */
+  {
+    int nr = 3;
+    /* loop over the number of rectangles */
+    for( k = 0; k < nr; k++ )
+      {
+        tr.x = rectangles_array[r_index + k*4];
+        tr.width = rectangles_array[r_index + 2 + k*4];
+        tr.y = rectangles_array[r_index + 1 + k*4];
+        tr.height = rectangles_array[r_index + 3 + k*4];
+        if (k < 2)
+    {
+      scaled_rectangles_array[r_index + k*4] = (sum->data + sum->width*(tr.y ) + (tr.x )) ;
+      scaled_rectangles_array[r_index + k*4 + 1] = (sum->data + sum->width*(tr.y ) + (tr.x  + tr.width)) ;
+      scaled_rectangles_array[r_index + k*4 + 2] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x ));
+      scaled_rectangles_array[r_index + k*4 + 3] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x  + tr.width));
+    }
+        else
+    {
+      if ((tr.x == 0)&& (tr.y == 0) &&(tr.width == 0) &&(tr.height == 0))
+        {
+          scaled_rectangles_array[r_index + k*4] = NULL ;
+          scaled_rectangles_array[r_index + k*4 + 1] = NULL ;
+          scaled_rectangles_array[r_index + k*4 + 2] = NULL;
+          scaled_rectangles_array[r_index + k*4 + 3] = NULL;
+        }
+      else
+        {
+          scaled_rectangles_array[r_index + k*4] = (sum->data + sum->width*(tr.y ) + (tr.x )) ;
+          scaled_rectangles_array[r_index + k*4 + 1] = (sum->data + sum->width*(tr.y ) + (tr.x  + tr.width)) ;
+          scaled_rectangles_array[r_index + k*4 + 2] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x ));
+          scaled_rectangles_array[r_index + k*4 + 3] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x  + tr.width));
+        }
+    } /* end of branch if(k<2) */
+      } /* end of k loop*/
+    r_index+=12;
+    w_index+=3;
+  } /* end of j loop */
     } /* end i loop */
 }
 
@@ -384,23 +360,23 @@ inline int evalWeakClassifier(int variance_norm_factor, int p_offset, int tree_i
   int t = tree_thresh_array[tree_index] * variance_norm_factor;
 
   int sum = (*(scaled_rectangles_array[r_index] + p_offset)
-	     - *(scaled_rectangles_array[r_index + 1] + p_offset)
-	     - *(scaled_rectangles_array[r_index + 2] + p_offset)
-	     + *(scaled_rectangles_array[r_index + 3] + p_offset))
+       - *(scaled_rectangles_array[r_index + 1] + p_offset)
+       - *(scaled_rectangles_array[r_index + 2] + p_offset)
+       + *(scaled_rectangles_array[r_index + 3] + p_offset))
     * weights_array[w_index];
 
 
   sum += (*(scaled_rectangles_array[r_index+4] + p_offset)
-	  - *(scaled_rectangles_array[r_index + 5] + p_offset)
-	  - *(scaled_rectangles_array[r_index + 6] + p_offset)
-	  + *(scaled_rectangles_array[r_index + 7] + p_offset))
+    - *(scaled_rectangles_array[r_index + 5] + p_offset)
+    - *(scaled_rectangles_array[r_index + 6] + p_offset)
+    + *(scaled_rectangles_array[r_index + 7] + p_offset))
     * weights_array[w_index + 1];
 
   if ((scaled_rectangles_array[r_index+8] != NULL))
     sum += (*(scaled_rectangles_array[r_index+8] + p_offset)
-	    - *(scaled_rectangles_array[r_index + 9] + p_offset)
-	    - *(scaled_rectangles_array[r_index + 10] + p_offset)
-	    + *(scaled_rectangles_array[r_index + 11] + p_offset))
+      - *(scaled_rectangles_array[r_index + 9] + p_offset)
+      - *(scaled_rectangles_array[r_index + 10] + p_offset)
+      + *(scaled_rectangles_array[r_index + 11] + p_offset))
       * weights_array[w_index + 2];
 
   if(sum >= t)
@@ -425,7 +401,7 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
   int stage_sum;
   myCascade* cascade;
   cascade = _cascade;
-	
+  
   p_offset = pt.y * (cascade->sum.width) + pt.x;
   pq_offset = pt.y * (cascade->sqsum.width) + pt.x;
 
@@ -487,16 +463,16 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
       stage_sum = 0;
 
       for( j = 0; j < stages_array[i]; j++ )
-	{
-	  /**************************************************
-	   * Send the shifted window to a haar filter.
-	   **************************************************/
-	  stage_sum += evalWeakClassifier(variance_norm_factor, p_offset, haar_counter, w_index, r_index);
-	  n_features++;
-	  haar_counter++;
-	  w_index+=3;
-	  r_index+=12;
-	} /* end of j loop */
+      {
+        /**************************************************
+         * Send the shifted window to a haar filter.
+         **************************************************/
+        stage_sum += evalWeakClassifier(variance_norm_factor, p_offset, haar_counter, w_index, r_index);
+        n_features++;
+        haar_counter++;
+        w_index+=3;
+        r_index+=12;
+      } /* end of j loop */
 
       /**************************************************************
        * threshold of the stage. 
@@ -508,7 +484,7 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
 
       /* the number "0.4" is empirically chosen for 5kk73 */
       if( stage_sum < 0.4*stages_thresh_array[i] ){
-	return -i;
+       return -i;
       } /* end of the per-stage thresholding */
     } /* end of i loop */
   return 1;
@@ -553,7 +529,7 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
    *
    * The step size is set to 1 for 5kk73,
    * i.e., shift the filter window by 1 pixel.
-   *******************************************/	
+   *******************************************/ 
   step = 1;
 
   /**********************************************
@@ -566,36 +542,38 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
    * Merge functions/loops to increase locality
    * Tiling to increase computation-to-memory ratio
    *********************************************/
+   
   for( x = 0; x <= x2; x += step )
     for( y = y1; y <= y2; y += step )
+    {
+      p.x = x;
+      p.y = y;
+
+      /*********************************************
+       * Optimization Oppotunity:
+       * The same cascade filter is used each time
+       ********************************************/
+      result = runCascadeClassifier( cascade, p, 0 );
+
+      /*******************************************************
+       * If a face is detected,
+       * record the coordinates of the filter window
+       * the "push_back" function is from std:vec, more info:
+       * http://en.wikipedia.org/wiki/Sequence_container_(C++)
+       *
+       * Note that, if the filter runs on GPUs,
+       * the push_back operation is not possible on GPUs.
+       * The GPU may need to use a simpler data structure,
+       * e.g., an array, to store the coordinates of face,
+       * which can be later memcpy from GPU to CPU to do push_back
+       *******************************************************/
+      if( result > 0 )
       {
-	p.x = x;
-	p.y = y;
-
-	/*********************************************
-	 * Optimization Oppotunity:
-	 * The same cascade filter is used each time
-	 ********************************************/
-	result = runCascadeClassifier( cascade, p, 0 );
-
-	/*******************************************************
-	 * If a face is detected,
-	 * record the coordinates of the filter window
-	 * the "push_back" function is from std:vec, more info:
-	 * http://en.wikipedia.org/wiki/Sequence_container_(C++)
-	 *
-	 * Note that, if the filter runs on GPUs,
-	 * the push_back operation is not possible on GPUs.
-	 * The GPU may need to use a simpler data structure,
-	 * e.g., an array, to store the coordinates of face,
-	 * which can be later memcpy from GPU to CPU to do push_back
-	 *******************************************************/
-	if( result > 0 )
-	  {
-	    MyRect r = {myRound(x*factor), myRound(y*factor), winSize.width, winSize.height};
-	    vec->push_back(r);
-	  }
+        MyRect r = {myRound(x*factor), myRound(y*factor), winSize.width, winSize.height};
+        vec->push_back(r);
+        
       }
+    }
 }
 
 /*****************************************************
@@ -604,39 +582,98 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
  * More info:
  * http://en.wikipedia.org/wiki/Summed_area_table
  ****************************************************/
-void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum )
-{
-  int x, y, s, sq, t, tq;
-  unsigned char it;
-  int height = src->height;
-  int width = src->width;
-  unsigned char *data = src->data;
-  int * sumData = sum->data;
-  int * sqsumData = sqsum->data;
-  for( y = 0; y < height; y++)
-    {
-      s = 0;
-      sq = 0;
-      /* loop over the number of columns */
-      for( x = 0; x < width; x ++)
-	{
-	  it = data[y*width+x];
-	  /* sum of the current row (integer)*/
-	  s += it; 
-	  sq += it*it;
+// void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum )
+// {
+//   int x, y, s, sq, t, tq;
+//   unsigned char it;
+//   int height = src->height;
+//   int width = src->width;
+//   unsigned char *data = src->data;
+//   int * sumData = sum->data;
+//   int * sqsumData = sqsum->data;
 
-	  t = s;
-	  tq = sq;
-	  if (y != 0)
-	    {
-	      t += sumData[(y-1)*width+x];
-	      tq += sqsumData[(y-1)*width+x];
-	    }
-	  sumData[y*width+x]=t;
-	  sqsumData[y*width+x]=tq;
+//   // CUDA Point
+//   for( y = 0; y < height; y++)
+//     {
+//       s = 0;
+//       sq = 0;
+//       /* loop over the number of columns */
+//       for( x = 0; x < width; x ++)
+//       {
+//         it = data[y*width+x];
+//         /* sum of the current row (integer)*/
+//         s += it; 
+//         sq += it*it;
+
+//         t = s;
+//         tq = sq;
+//         if (y != 0)
+//         {
+//           t += sumData[(y-1)*width+x];
+//           tq += sqsumData[(y-1)*width+x];
+//         }
+//         sumData[y*width+x]=t;
+//         sqsumData[y*width+x]=tq;
+//       }
+//     }
+// }
+
+void integralImages(MyImage *src, MyIntImage *sum, MyIntImage *sqsum){
+
+	int height = src->height;
+	int width = src->width;
+
+	int size = height*width;
+
+	int* sumdata = sum->data;
+	int* sqsumdata = sqsum->data;
+	unsigned char * data = src->data;
+	
+	int *sumdata_cu;
+	int *sqsumdata_cu;
+	unsigned char * data_cu;
+
+	
+
+	cudaMalloc((void **)&sumdata_cu,sizeof(int)*size);
+	cudaMalloc((void **)&sqsumdata_cu,sizeof(int)*size);		
+	cudaMalloc((void **)&data_cu,sizeof(unsigned char)*size);
+	
+
+	cudaMemcpy(data_cu, data, sizeof(unsigned char)*size, cudaMemcpyHostToDevice);
+
+	int blocks, threadsPerBlock;
+	
+	if (height>THREADS){
+		blocks = ceil(height/(float)THREADS);
+	} else {
+		blocks = 1;
+
 	}
-    }
-}
+	threadsPerBlock = THREADS;
+
+
+	integralImageRows<<<blocks,threadsPerBlock>>>(sumdata_cu, sqsumdata_cu, data_cu, width, height);
+	cudaDeviceSynchronize();
+
+	if (width>THREADS){
+		blocks = ceil(width/THREADS);
+	} else {
+		blocks = 1;
+	}
+
+	integralImageCols<<<blocks,threadsPerBlock>>>(sumdata_cu, sqsumdata_cu, width, height);
+
+	cudaDeviceSynchronize();
+
+	
+	cudaMemcpy(sumdata, sumdata_cu, sizeof(int)*size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(sqsumdata, sqsumdata_cu, sizeof(int)*size, cudaMemcpyDeviceToHost);
+	cudaFree(sumdata_cu);
+	cudaFree(sqsumdata_cu);
+	cudaFree(data_cu);
+
+} 
 
 /***********************************************************
  * This function downsample an image using nearest neighbor
@@ -665,19 +702,20 @@ void nearestNeighbor (MyImage *src, MyImage *dst)
   int x_ratio = (int)((w1<<16)/w2) +1;
   int y_ratio = (int)((h1<<16)/h2) +1;
 
+
   for (i=0;i<h2;i++)
+  {
+    t = dst_data + i*w2;
+    y = ((i*y_ratio)>>16);
+    p = src_data + y*w1;
+    rat = 0;
+    for (j=0;j<w2;j++)
     {
-      t = dst_data + i*w2;
-      y = ((i*y_ratio)>>16);
-      p = src_data + y*w1;
-      rat = 0;
-      for (j=0;j<w2;j++)
-	{
-	  x = (rat>>16);
-	  *t++ = p[x];
-	  rat += x_ratio;
-	}
+      x = (rat>>16);
+      *t++ = p[x];
+      rat += x_ratio;
     }
+  }
 }
 
 void readTextClassifier()//(myCascade * cascade)
@@ -765,49 +803,49 @@ void readTextClassifier()//(myCascade * cascade)
   for (i = 0; i < stages; i++)
     {    /* loop over n of trees */
       for (j = 0; j < stages_array[i]; j++)
-	{	/* loop over n of rectangular features */
-	  for(k = 0; k < 3; k++)
-	    {	/* loop over the n of vertices */
-	      for (l = 0; l <4; l++)
-		{
-		  if (fgets (mystring , 12 , fp) != NULL)
-		    rectangles_array[r_index] = atoi(mystring);
-		  else
-		    break;
-		  r_index++;
-		} /* end of l loop */
-	      if (fgets (mystring , 12 , fp) != NULL)
-		{
-		  weights_array[w_index] = atoi(mystring);
-		  /* Shift value to avoid overflow in the haar evaluation */
-		  /*TODO: make more general */
-		  /*weights_array[w_index]>>=8; */
-		}
-	      else
-		break;
-	      w_index++;
-	    } /* end of k loop */
-	  if (fgets (mystring , 12 , fp) != NULL)
-	    tree_thresh_array[tree_index]= atoi(mystring);
-	  else
-	    break;
-	  if (fgets (mystring , 12 , fp) != NULL)
-	    alpha1_array[tree_index]= atoi(mystring);
-	  else
-	    break;
-	  if (fgets (mystring , 12 , fp) != NULL)
-	    alpha2_array[tree_index]= atoi(mystring);
-	  else
-	    break;
-	  tree_index++;
-	  if (j == stages_array[i]-1)
-	    {
-	      if (fgets (mystring , 12 , fp) != NULL)
-		stages_thresh_array[i] = atoi(mystring);
-	      else
-		break;
-	    }
-	} /* end of j loop */
+         {  /* loop over n of rectangular features */
+           for(k = 0; k < 3; k++)
+             {  /* loop over the n of vertices */
+               for (l = 0; l <4; l++)
+                {
+                  if (fgets (mystring , 12 , fp) != NULL)
+                    rectangles_array[r_index] = atoi(mystring);
+                  else
+                    break;
+                  r_index++;
+                } /* end of l loop */
+                 if (fgets (mystring , 12 , fp) != NULL)
+                  {
+                    weights_array[w_index] = atoi(mystring);
+                    /* Shift value to avoid overflow in the haar evaluation */
+                    /*TODO: make more general */
+                    /*weights_array[w_index]>>=8; */
+                  }
+                 else
+                  break;
+               w_index++;
+             } /* end of k loop */
+            if (fgets (mystring , 12 , fp) != NULL)
+              tree_thresh_array[tree_index]= atoi(mystring);
+            else
+              break;
+            if (fgets (mystring , 12 , fp) != NULL)
+              alpha1_array[tree_index]= atoi(mystring);
+            else
+              break;
+            if (fgets (mystring , 12 , fp) != NULL)
+              alpha2_array[tree_index]= atoi(mystring);
+            else
+              break;
+            tree_index++;
+            if (j == stages_array[i]-1)
+              {
+               if (fgets (mystring , 12 , fp) != NULL)
+                stages_thresh_array[i] = atoi(mystring);
+               else
+                break;
+               }  
+         } /* end of j loop */
     } /* end of i loop */
   fclose(fp);
 }
@@ -824,4 +862,4 @@ void releaseTextClassifier()
   free(alpha2_array);
   free(stages_thresh_array);
 }
-/* End of file. */
+

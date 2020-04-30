@@ -138,10 +138,13 @@ rectangles.o: rectangles.cpp $(HEADERS)
 stdio-wrapper.o: stdio-wrapper.c $(HEADERS)
 	        $(GCC) $(CCFLAGS) $(EXTRA_CCFLAGS) $(INCLUDES) -o $@ -c $<
 
-haar.o: haar.cu gpu_functions.cuh $(HEADERS)
-	$(NVCC) $(NVCCFLAGS) $(EXTRA_NVCCFLAGS) $(GENCODE_FLAGS) $(INCLUDES) -o $@ -c $<
+gpu_functions.o: gpu_functions.cu $(HEADERS)
+	$(NVCC) -o $@ -c $< -O3
 
-vj: main.o haar.o image.o stdio-wrapper.o rectangles.o
+haar.o: haar.cu $(HEADERS)
+	$(NVCC) -o $@ -c $< -O3
+
+vj: main.o haar.o gpu_functions.o image.o stdio-wrapper.o rectangles.o
 	$(GCC) $(CCFLAGS) -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS)
 	mkdir -p ../../bin/$(OSLOWER)/$(TARGET)
 	cp $@ ../../bin/$(OSLOWER)/$(TARGET)

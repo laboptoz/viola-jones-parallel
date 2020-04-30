@@ -37,22 +37,22 @@
 #include "stdio-wrapper.h"
 #include "haar.h"
 
-#include <chrono> 
+#include <chrono>
 #include <iostream>
 
 #define INPUT_FILENAME "Face.pgm"
-#define OUTPUT_FILENAME "Output.pgm"
+#define OUTPUT_FILENAME "Output4.pgm"
 
 using namespace std;
 
 
-int main (int argc, char *argv[]) 
+int main (int argc, char *argv[])
 {
 
-	using namespace std::chrono; 
+	using namespace std::chrono;
 
 	int flag;
-	
+
 	int mode = 1;
 	int i;
 
@@ -78,7 +78,7 @@ int main (int argc, char *argv[])
 	printf("-- loading cascade classifier --\r\n");
 
 	/* start timer */
-	auto start = high_resolution_clock::now(); 
+	auto start = high_resolution_clock::now();
 
 	myCascade cascadeObj;
 	myCascade *cascade = &cascadeObj;
@@ -106,8 +106,8 @@ int main (int argc, char *argv[])
 		drawRectangle(image, r);
 	}
 
-	printf("-- saving output --\r\n"); 
-	flag = writePgm((char *)OUTPUT_FILENAME, image); 
+	printf("-- saving output --\r\n");
+	flag = writePgm((char *)OUTPUT_FILENAME, image);
 
 	printf("-- image saved --\r\n");
 
@@ -117,10 +117,10 @@ int main (int argc, char *argv[])
 
 	/* stop timer and print out time */
 	auto stop = high_resolution_clock::now();
-	auto duration = duration_cast<microseconds>(stop - start); 
+	auto duration = duration_cast<microseconds>(stop - start);
 	cout << "Total Execution Time: "
-         << duration.count() << " microseconds" << endl; 
-  
+         << duration.count() << " microseconds" << endl;
+
 
 	return 0;
 }
