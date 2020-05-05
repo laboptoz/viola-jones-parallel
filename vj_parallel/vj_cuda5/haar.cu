@@ -17,7 +17,7 @@
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation.
- *
+ *x
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -409,9 +409,6 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
 									sum_data_cu, tree_thresh_array_cu, scaled_rectangles_array_cu, 
                   weights_array_cu, alpha1_array_cu, alpha2_array_cu, stages_thresh_array_cu, stages_array_cu,
                   n_stages, inv_window_area, sum_width, sqsum_width);
-
-
-	cudaDeviceSynchronize();
 
 
 	cudaMemcpy(result, result_cu, sizeof(int)*x2*y2, cudaMemcpyDeviceToHost);
