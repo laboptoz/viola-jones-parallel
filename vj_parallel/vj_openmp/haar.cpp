@@ -586,8 +586,7 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
   for( int x = 0; x <= x2; x += 1 )
   {
     
-
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static, 64)
     for( int y = 0; y <= y2; y += 1 )
     {
       // p.x = x;
