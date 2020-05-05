@@ -3,7 +3,7 @@
 import os
 import subprocess
 
-num_runs = 5
+num_runs = 10
 vj_seq = './vj'
 
 def kill_process():
@@ -17,12 +17,20 @@ def run():
   for i in range(num_runs):
     p = subprocess.Popen([vj_seq], stdout=subprocess.PIPE)
     out = p.stdout.read()
-    time_txt = out.split('Total Execution Time: ')[1]
-    time = time_txt.split(' ')[0]
+    p.wait()
 
-    sum_time += int(time) 
     print('----------------- Run #' + str(i) + ' -----------------')
     print(out)
+
+    if ('Total Execution Time: ' in out):
+
+      time_txt = out.split('Total Execution Time: ')[1]
+      time = time_txt.split(' ')[0]
+
+      sum_time += int(time) 
+    else:
+      print("!!! couldn't read execution time !!!")
+   
   
   avg_time = sum_time / num_runs
   print('================ Final Results (' + str(num_runs) + ' runs) ================')

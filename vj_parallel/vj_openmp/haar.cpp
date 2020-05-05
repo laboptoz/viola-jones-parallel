@@ -60,13 +60,12 @@ static int **scaled_rectangles_array;
 
 
 int clock_counter = 0;
-float n_features = 0;
 
 
 int iter_counter = 0;
 
 /* compute integral images */
-void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum );
+void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum, int iter );
 
 /* scale down the image */
 void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int sum_col, std::vector<MyRect>& _vec);
@@ -84,6 +83,7 @@ inline  int  myRound( float value )
  * Function: detectObjects
  * Description: It calls all the major steps
  ******************************************************/
+using namespace std::chrono; 
 
 std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize, myCascade* cascade,
 				   float scaleFactor, int minNeighbors)
@@ -183,14 +183,32 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
        * building image pyramid by downsampling
        * downsampling using nearest neighbor
        **************************************/
+      // auto start, stop, duration; 
+      std::cout << "----------------------\n";
+
+      auto start1 = high_resolution_clock::now(); 
+
       nearestNeighbor(img, img1);
+
+      auto stop1 = high_resolution_clock::now();
+      auto duration1 = duration_cast<microseconds>(stop1 - start1); 
+      std::cout << "Nearest Neighbor Execution Time: "
+            << duration1.count() << " microseconds\n";
 
       /***************************************************
        * Compute-intensive step:
        * At each scale of the image pyramid,
        * compute a new integral and squared integral image
        ***************************************************/
-      integralImages(img1, sum1, sqsum1);
+      auto start2 = high_resolution_clock::now(); 
+
+      integralImages(img1, sum1, sqsum1, iter_counter);
+
+      auto stop2 = high_resolution_clock::now();
+      auto duration2 = duration_cast<microseconds>(stop2 - start2); 
+      std::cout << "Integral Image Execution Time: "
+            << duration2.count() << " microseconds\n";
+
 
       /* sets images for haar classifier cascade */
       /**************************************************
@@ -203,7 +221,14 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
        * but does not do compuation based on four coners.
        * The computation is done next in ScaleImage_Invoker
        *************************************************/
+      auto start3 = high_resolution_clock::now(); 
+
       setImageForCascadeClassifier( cascade, sum1, sqsum1);
+
+      auto stop3 = high_resolution_clock::now();
+      auto duration3 = duration_cast<microseconds>(stop3 - start3); 
+      std::cout << "set Image Execution Time: "
+            << duration3.count() << " microseconds\n";
 
       /* print out for each scale of the image pyramid */
       printf("detecting faces, iter := %d\n", iter_counter);
@@ -214,8 +239,16 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
        * Optimization oppurtunity:
        * the same cascade filter is invoked each time
        ***************************************************/
+      auto start4 = high_resolution_clock::now(); 
+
       ScaleImage_Invoker(cascade, factor, sum1->height, sum1->width,
 			 allCandidates);
+      
+      auto stop4 = high_resolution_clock::now();
+      auto duration4 = duration_cast<microseconds>(stop4 - start4); 
+      std::cout << "Scale Image Invoker Execution Time: "
+            << duration4.count() << " microseconds\n";
+
     } /* end of the factor loop, finish all scales in pyramid*/
 
   if( minNeighbors != 0)
@@ -224,8 +257,11 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
     }
 
   freeImage(img1);
+  img1 = NULL;
   freeSumImage(sum1);
+  sum1 = NULL;
   freeSumImage(sqsum1);
+  sqsum1 = NULL;
   return allCandidates;
 
 }
@@ -388,7 +424,7 @@ inline int evalWeakClassifier(int variance_norm_factor, int p_offset, int tree_i
 
 
 
-int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
+int runCascadeClassifier( myCascade* _cascade, int x, int y, int start_stage )
 {
 
   int p_offset, pq_offset;
@@ -402,8 +438,8 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
   myCascade* cascade;
   cascade = _cascade;
 	
-  p_offset = pt.y * (cascade->sum.width) + pt.x;
-  pq_offset = pt.y * (cascade->sqsum.width) + pt.x;
+  p_offset = y * (cascade->sum.width) + x;
+  pq_offset = y * (cascade->sqsum.width) + x;
 
   /**************************************************************************
    * Image normalization
@@ -450,43 +486,41 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
    * and compared with a per-stage threshold.
    *************************************************/
   for( i = start_stage; i < cascade->n_stages; i++ )
+  {
+
+    /****************************************************
+     * A shared variable that induces false dependency
+     * 
+     * To avoid it from limiting parallelism,
+     * we can duplicate it multiple times,
+     * e.g., using stage_sum_array[number_of_threads].
+     * Then threads only need to sync at the end
+     ***************************************************/
+    stage_sum = 0;
+    for( j = 0; j < stages_array[i]; j++ )
     {
+      /**************************************************
+       * Send the shifted window to a haar filter.
+       **************************************************/
+      stage_sum += evalWeakClassifier(variance_norm_factor, p_offset, haar_counter, w_index, r_index);
+      haar_counter++;
+      w_index+=3;
+      r_index+=12;
+    } /* end of j loop */
 
-      /****************************************************
-       * A shared variable that induces false dependency
-       * 
-       * To avoid it from limiting parallelism,
-       * we can duplicate it multiple times,
-       * e.g., using stage_sum_array[number_of_threads].
-       * Then threads only need to sync at the end
-       ***************************************************/
-      stage_sum = 0;
+    /**************************************************************
+     * threshold of the stage. 
+     * If the sum is below the threshold, 
+     * no faces are detected, 
+     * and the search is abandoned at the i-th stage (-i).
+     * Otherwise, a face is detected (1)
+     **************************************************************/
 
-      for( j = 0; j < stages_array[i]; j++ )
-	{
-	  /**************************************************
-	   * Send the shifted window to a haar filter.
-	   **************************************************/
-	  stage_sum += evalWeakClassifier(variance_norm_factor, p_offset, haar_counter, w_index, r_index);
-	  n_features++;
-	  haar_counter++;
-	  w_index+=3;
-	  r_index+=12;
-	} /* end of j loop */
-
-      /**************************************************************
-       * threshold of the stage. 
-       * If the sum is below the threshold, 
-       * no faces are detected, 
-       * and the search is abandoned at the i-th stage (-i).
-       * Otherwise, a face is detected (1)
-       **************************************************************/
-
-      /* the number "0.4" is empirically chosen for 5kk73 */
-      if( stage_sum < 0.4*stages_thresh_array[i] ){
-	return -i;
-      } /* end of the per-stage thresholding */
-    } /* end of i loop */
+    /* the number "0.4" is empirically chosen for 5kk73 */
+    if( stage_sum < 0.4*stages_thresh_array[i] ){
+      return -i;
+    } /* end of the per-stage thresholding */
+  } /* end of i loop */
   return 1;
 }
 
@@ -497,9 +531,11 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
   myCascade* cascade = _cascade;
 
   float factor = _factor;
-  MyPoint p;
-  int result;
-  int y1, y2, x2, x, y, step;
+  // MyPoint p;
+  // int result;
+  int y1, y2, x2, step;
+  
+
   std::vector<MyRect> *vec = &_vec;
 
   MySize winSize0 = cascade->orig_window_size;
@@ -532,6 +568,8 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
    *******************************************/	
   step = 1;
 
+
+
   /**********************************************
    * Shift the filter window over the image.
    * Each shift step is independent.
@@ -542,36 +580,47 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
    * Merge functions/loops to increase locality
    * Tiling to increase computation-to-memory ratio
    *********************************************/
-  for( x = 0; x <= x2; x += step )
-    for( y = y1; y <= y2; y += step )
+  // #pragma omp declare reduction (mer : std::vector<MyRect> : omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
+  
+  #pragma omp parallel for schedule(dynamic)
+  for( int x = 0; x <= x2; x += 1 )
+  {
+    
+
+    #pragma omp parallel for
+    for( int y = 0; y <= y2; y += 1 )
+    {
+      // p.x = x;
+      // p.y = y;
+      myCascade* cascade_cpy = _cascade;
+
+      /*********************************************
+       * Optimization Oppotunity:
+       * The same cascade filter is used each time
+       ********************************************/
+
+      int result = runCascadeClassifier( cascade_cpy , x, y, 0 );
+
+      /*******************************************************
+       * If a face is detected,
+       * record the coordinates of the filter window
+       * the "push_back" function is from std:vec, more info:
+       * http://en.wikipedia.org/wiki/Sequence_container_(C++)
+       *
+       * Note that, if the filter runs on GPUs,
+       * the push_back operation is not possible on GPUs.
+       * The GPU may need to use a simpler data structure,
+       * e.g., an array, to store the coordinates of face,
+       * which can be later memcpy from GPU to CPU to do push_back
+       *******************************************************/
+      if( result > 0 )
       {
-	p.x = x;
-	p.y = y;
-
-	/*********************************************
-	 * Optimization Oppotunity:
-	 * The same cascade filter is used each time
-	 ********************************************/
-	result = runCascadeClassifier( cascade, p, 0 );
-
-	/*******************************************************
-	 * If a face is detected,
-	 * record the coordinates of the filter window
-	 * the "push_back" function is from std:vec, more info:
-	 * http://en.wikipedia.org/wiki/Sequence_container_(C++)
-	 *
-	 * Note that, if the filter runs on GPUs,
-	 * the push_back operation is not possible on GPUs.
-	 * The GPU may need to use a simpler data structure,
-	 * e.g., an array, to store the coordinates of face,
-	 * which can be later memcpy from GPU to CPU to do push_back
-	 *******************************************************/
-	if( result > 0 )
-	  {
-	    MyRect r = {myRound(x*factor), myRound(y*factor), winSize.width, winSize.height};
-	    vec->push_back(r);
-	  }
+        MyRect r = {myRound(x*factor), myRound(y*factor), winSize.width, winSize.height};
+        #pragma omp critical
+        vec->push_back(r);
       }
+    }
+  }
 }
 
 void transpose(int *src, int *dst, int width, int height) {
@@ -628,96 +677,110 @@ void transpose(int *src, int *dst, int width, int height) {
  * http://en.wikipedia.org/wiki/Summed_area_table
  ****************************************************/
 using namespace std::chrono; 
-void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum)
+void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum, int iter )
 {
-  
-  // auto start = high_resolution_clock::now(); 
-
   int height = src->height;
   int width = src->width;
   unsigned char *data = src->data;
   int *sumData = sum->data;
   int *sqsumData = sqsum->data;
 
-  int *tsumData = new int [height*width];
-  int *tsqsumData = new int [height*width];
-
-  /* row sum */
-  #pragma omp parallel for
-  for (int y = 0; y < height; y++) {
-    
-    int s = 0;
-    int sq = 0;
-    unsigned char it;
-    for (int x = 0; x < width; x++) {
-      it = data[y*width+x];
-      s += it;
-      sq += it*it;
-      tsumData[y*width+x] = s;
-      tsqsumData[y*width+x] = sq;
-    }
-  }
-
-  transpose(tsumData, sumData, height, width);
-  transpose(tsqsumData, sqsumData, height, width);
-
-  #pragma omp parallel for
-  for (int y = 0; y < width; y++) {
-    int s = 0;
-    int sq = 0;
-    int it, itt;
-    for (int x = 0; x < height; x++) {
-      it = sumData[y*height+x];
-      itt = sqsumData[y*height+x];
-      s += it;
-      sq += itt;
-      tsumData[y*height+x] = s;
-      tsqsumData[y*height+x] = sq;
+  if (iter <= 10) {
+    std::cout << "parallelizing \n";
+    #pragma omp parallel for
+    for (int y = 0; y < height; y++) {
+      
+      // int s = 0;
+      // int sq = 0;
+      unsigned char it;
+      for (int x = 1; x < width; x++) {
+        it = data[y*width+x];
+        // s += it;
+        // sq += it*it;
+        sumData[y*width+x] = sumData[y*width+x-1] + it;
+        sqsumData[y*width+x] = sqsumData[y*width+x-1] + (it*it);
+      }
     } 
+
+    #pragma omp parallel for
+    for (int x = 0; x < width; x++) {
+      // int s = 0;
+      // int sq = 0;
+      for (int y = 1; y < height; y++) {
+        // tsumData[y*width+x] += tsumData[(y-1)*width+x];
+        // tsqsumData[y*width+x] += tsqsumData[(y-1)*width+x];
+        // s += sumData[y*width+x];
+        // sq += sqsumData[y*width+x];
+        sumData[y*width+x] += sumData[(y-1)*width+x];
+        sqsumData[y*width+x] += sqsumData[(y-1)*width+x];
+      }
+    }
+
   }
 
-  transpose(tsumData, sumData, width, height);
-  transpose(tsqsumData, sqsumData, width, height);
+  else {
+
+    for(int y = 0; y < height; y++)
+    {
+      int s = 0;
+      int sq = 0;
+      int t, tq;
+      
+      /* loop over the number of columns */
+      for(int x = 0; x < width; x ++) 
+      {
+        unsigned char it;
+        it = data[y*width+x];
+
+        /* sum of the current row (integer)*/
+        s += it; 
+        sq += it*it;
+
+        t = s;
+        tq = sq;
+
+        /* also add sum of previous rows */
+        if (y != 0)
+        {
+          t += sumData[(y-1)*width+x];
+          tq += sqsumData[(y-1)*width+x];
+        }
+
+        sumData[y*width+x]=t;
+        sqsumData[y*width+x]=tq;
+
+      }
+  }
+    
+  }
+  /* row sum */
+  
+
+  // transpose(tsumData, sumData, height, width);
+  // transpose(tsqsumData, sqsumData, height, width);
+
+  // #pragma omp parallel for
+  // for (int y = 0; y < width; y++) {
+  //   int s = 0;
+  //   int sq = 0;
+  //   int it, itt;
+  //   for (int x = 0; x < height; x++) {
+  //     it = sumData[y*height+x];
+  //     itt = sqsumData[y*height+x];
+  //     s += it;
+  //     sq += itt;
+  //     tsumData[y*height+x] = s;
+  //     tsqsumData[y*height+x] = sq;
+  //   } 
+  // }
 
 
-  // auto stop = high_resolution_clock::now();
-	// auto duration = duration_cast<microseconds>(stop - start); 
-	// std::cout << "Integral Image Execution Time: "
-  //        << duration.count() << " microseconds\n"; 
+  // // transpose(tsumData, sumData, width, height);
+  // transpose(tsqsumData, sqsumData, width, height);
   
 
   /* loop over the number of row */
-  // for(int y = 0; y < height; y++)
-  // {
-  //   int s = 0;
-  //   int sq = 0;
-  //   int t, tq;
-    
-  //   /* loop over the number of columns */
-  //   for(int x = 0; x < width; x ++) 
-  //   {
-  //     unsigned char it;
-  //     it = data[y*width+x];
 
-  //     /* sum of the current row (integer)*/
-  //     s += it; 
-  //     sq += it*it;
-
-  //     t = s;
-  //     tq = sq;
-
-  //     /* also add sum of previous rows */
-  //     if (y != 0)
-  //     {
-  //       t += sumData[(y-1)*width+x];
-  //       tq += sqsumData[(y-1)*width+x];
-  //     }
-
-  //     sumData[y*width+x]=t;
-  //     sqsumData[y*width+x]=tq;
-
-  //   }
-  // }
 }
 
 /***********************************************************
@@ -863,7 +926,7 @@ void readTextClassifier()//(myCascade * cascade)
 		  weights_array[w_index] = atoi(mystring);
 		  /* Shift value to avoid overflow in the haar evaluation */
 		  /*TODO: make more general */
-		  /*weights_array[w_index]>>=8; */
+		  // weights_array[w_index]>>=8;
 		}
 	      else
 		break;
@@ -898,12 +961,20 @@ void readTextClassifier()//(myCascade * cascade)
 void releaseTextClassifier()
 {
   free(stages_array);
+  stages_array = NULL;
   free(rectangles_array);
+  rectangles_array = NULL;
   free(scaled_rectangles_array);
+  scaled_rectangles_array = NULL;
   free(weights_array);
+  weights_array = NULL;
   free(tree_thresh_array);
+  tree_thresh_array = NULL;
   free(alpha1_array);
+  alpha1_array = NULL;
   free(alpha2_array);
+  alpha2_array = NULL;
   free(stages_thresh_array);
+  stages_array = NULL;
 }
 /* End of file. */
