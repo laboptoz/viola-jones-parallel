@@ -142,7 +142,7 @@ gpu_functions.o: gpu_functions.cu $(HEADERS)
 	$(NVCC) -o $@ -c $< -O3
 
 haar.o: haar.cu $(HEADERS)
-	$(NVCC) -o $@ -c $< -O3
+	$(NVCC) $(INCLUDES) -std=c++11 -o $@ -c $< -O3
 
 vj: main.o haar.o gpu_functions.o image.o stdio-wrapper.o rectangles.o
 	$(GCC) $(CCFLAGS) -o $@ $+ $(LDFLAGS) $(EXTRA_LDFLAGS)

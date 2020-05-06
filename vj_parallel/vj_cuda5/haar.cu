@@ -34,7 +34,15 @@
 #include "haar.h"
 #include "image.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include "stdio-wrapper.h"
+
+#include <chrono>
+#include <iostream>
+
+
+
+
 
 /* include the gpu functions */
 #include "gpu_functions.cuh"
@@ -56,9 +64,21 @@ static int *tree_thresh_array;
 static int *stages_thresh_array;
 static int *scaled_rectangles_array;
 
+int* result_cu;
+int *scaled_rectangles_array_cu;
+int *weights_array_cu;
+int *alpha1_array_cu;
+int *alpha2_array_cu;
+int *tree_thresh_array_cu;
+int *stages_thresh_array_cu;
+int *stages_array_cu;
+int *sum_data_cu;
+int *sqsum_data_cu;
+
+
 
 int clock_counter = 0;
-float n_features = 0;
+int n_features = 0;
 int haar_nodes;
 
 
@@ -141,8 +161,21 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
 	/* malloc for sqsum1: unsigned char */
 	createSumImage(img->width, img->height, sqsum1);
 
+
+	int imageSize = cascade->sum.width* cascade->sum.height; 
+  
+	cudaMalloc((void**) &tree_thresh_array_cu, sizeof(int)*haar_nodes*12);
+	cudaMalloc((void**) &scaled_rectangles_array_cu, sizeof(int)*haar_nodes*12);
+	cudaMalloc((void**) &weights_array_cu, sizeof(int)*haar_nodes*3);	
+	cudaMalloc((void**) &alpha1_array_cu, sizeof(int)*haar_nodes);
+	cudaMalloc((void**) &alpha2_array_cu, sizeof(int)*haar_nodes);
+	cudaMalloc((void**) &stages_thresh_array_cu, sizeof(int)*cascade->n_stages);
+	cudaMalloc((void**) &stages_array_cu, sizeof(int)*cascade->n_stages);
+
+
 	/* initial scaling factor */
 	factor = 1;
+
 
 	/* iterate over the image pyramid */
 	for( factor = 1; ; factor *= scaleFactor )
@@ -223,6 +256,16 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
 		{
 			groupRectangles(allCandidates, minNeighbors, GROUP_EPS);
 		}
+
+
+
+	cudaFree(scaled_rectangles_array_cu); 
+	cudaFree(weights_array_cu); 
+	cudaFree(alpha1_array_cu);
+	cudaFree(alpha2_array_cu); 
+  	cudaFree(tree_thresh_array_cu);
+
+	cudaFree(stages_thresh_array_cu); 
 
 	freeImage(img1);
 	freeSumImage(sum1);
@@ -310,8 +353,10 @@ void setImageForCascadeClassifier( myCascade* _cascade, MyIntImage* _sum, MyIntI
 	} /* end i loop */
 }
 
+using namespace std::chrono;
 void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int sum_col, std::vector<MyRect>& _vec)
 {
+
 
 	myCascade* cascade = _cascade;
 
@@ -343,17 +388,7 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
 		blocky = 1;
 	}
 
-	int* result = (int*)malloc(x2*y2*sizeof(int));
-	int* result_cu;
-  int *scaled_rectangles_array_cu;
-  int *weights_array_cu;
-  int *alpha1_array_cu;
-  int *alpha2_array_cu;
-  int *tree_thresh_array_cu;
-  int *stages_thresh_array_cu;
-  int *stages_array_cu;
-	int* sum_data_cu;
-  int *sqsum_data_cu;
+  int* result = (int*)malloc(x2*y2*sizeof(int));
 
 	int* sqsum_data = cascade->pq0;
 	int* sum_data = cascade->p0;
@@ -371,18 +406,20 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
 	int cascade_pq2_offset = (cascade->sqsum.width)*(equRect.height-1);
 	int cascade_pq3_offset = cascade->sqsum.width*(equRect.height-1)+equRect.width-1;
 
+	// auto start = high_resolution_clock::now();	
+
+	// auto stop = high_resolution_clock::now();
+	// auto duration = duration_cast<microseconds>(stop - start);
+	// std::cout << "Kernel Execution Time: "
+	// 		 << duration.count() << " microseconds\n";
+	
+
+
 
 	cudaMalloc((void**) &result_cu, sizeof(int)*x2*y2); 
-	cudaMalloc((void**) &tree_thresh_array_cu, sizeof(int)*haar_nodes*12);
-	cudaMalloc((void**) &scaled_rectangles_array_cu, sizeof(int)*haar_nodes*12);
-	cudaMalloc((void**) &weights_array_cu, sizeof(int)*haar_nodes*3);
-	cudaMalloc((void**) &alpha1_array_cu, sizeof(int)*haar_nodes);
-	cudaMalloc((void**) &alpha2_array_cu, sizeof(int)*haar_nodes);
-	cudaMalloc((void**) &stages_thresh_array_cu, sizeof(int)*cascade->n_stages);
-	cudaMalloc((void**) &stages_array_cu, sizeof(int)*cascade->n_stages);
-
 	cudaMalloc((void**) &sqsum_data_cu, sizeof(int)*imageSize);
 	cudaMalloc((void**) &sum_data_cu, sizeof(int)*imageSize);
+
 
 	cudaMemcpy(tree_thresh_array_cu, tree_thresh_array, sizeof(int)*haar_nodes*12, cudaMemcpyHostToDevice);
 	cudaMemcpy(scaled_rectangles_array_cu, scaled_rectangles_array, sizeof(int)*haar_nodes*12, cudaMemcpyHostToDevice);
@@ -395,7 +432,9 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
 	cudaMemcpy(sqsum_data_cu, sqsum_data, sizeof(int)*imageSize, cudaMemcpyHostToDevice);
 	cudaMemcpy(sum_data_cu, sum_data, sizeof(int)*imageSize, cudaMemcpyHostToDevice);
 
-  dim3 blocks(blockx, blocky);
+	
+				 
+	dim3 blocks(blockx, blocky);
 	dim3 threadsPerBlock (THREADS,THREADS);
 
 
@@ -404,23 +443,25 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
   int inv_window_area = cascade->inv_window_area;
   int n_stages = cascade->n_stages;
 
-	runCascadeClassifier<<<blocks, threadsPerBlock>>>(result_cu, x2, y2,
+
+
+  runCascadeClassifier<<<blocks, threadsPerBlock>>>(result_cu, x2, y2,
 									sqsum_data_cu, cascade_pq1_offset, cascade_pq2_offset, cascade_pq3_offset, 
 									sum_data_cu, tree_thresh_array_cu, scaled_rectangles_array_cu, 
                   weights_array_cu, alpha1_array_cu, alpha2_array_cu, stages_thresh_array_cu, stages_array_cu,
                   n_stages, inv_window_area, sum_width, sqsum_width);
+				
+  
+  
 
 
 	cudaMemcpy(result, result_cu, sizeof(int)*x2*y2, cudaMemcpyDeviceToHost);
 
 
+
 	cudaFree(result_cu);
-	cudaFree(scaled_rectangles_array_cu); 
-	cudaFree(weights_array_cu); 
-	cudaFree(alpha1_array_cu);
-	cudaFree(alpha2_array_cu); 
-  cudaFree(tree_thresh_array_cu);
-	cudaFree(stages_thresh_array_cu); 
+
+
 
 
 	for(int x = 0; x < x2; x += step ) {

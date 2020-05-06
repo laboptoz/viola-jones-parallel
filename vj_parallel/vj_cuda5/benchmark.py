@@ -3,7 +3,7 @@
 import os
 import subprocess
 
-num_runs = 5
+num_runs = 20
 vj_par = './vj'
 
 def kill_process():
