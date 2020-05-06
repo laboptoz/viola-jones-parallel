@@ -517,10 +517,15 @@ int runCascadeClassifier( myCascade* _cascade, int x, int y, int start_stage )
      **************************************************************/
 
     /* the number "0.4" is empirically chosen for 5kk73 */
-    if( stage_sum < 0.4*stages_thresh_array[i] ){
+    if( stage_sum < 0.4*stages_thresh_array[i] ){     
       return -i;
     } /* end of the per-stage thresholding */
   } /* end of i loop */
+
+  printf("adding a rectangle\n");
+
+  
+
   return 1;
 }
 
@@ -615,6 +620,7 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
       if( result > 0 )
       {
         MyRect r = {myRound(x*factor), myRound(y*factor), winSize.width, winSize.height};
+        // printf("adding a rectangle: %d\n", result);
         #pragma omp critical
         vec->push_back(r);
       }
