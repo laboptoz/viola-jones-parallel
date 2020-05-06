@@ -55,7 +55,10 @@ static int *alpha1_array;
 static int *alpha2_array;
 static int *tree_thresh_array;
 static int *stages_thresh_array;
-static int **scaled_rectangles_array;
+static int *scaled_rectangles_array;
+
+
+int haar_nodes;
 
 
 int clock_counter = 0;
@@ -213,13 +216,18 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
        * Optimization oppurtunity:
        * the same cascade filter is invoked each time
        ***************************************************/
+
+      printf("here %d %d\n", sum1->height, sum1->width);
       ScaleImage_Invoker(cascade, factor, sum1->height, sum1->width,
        allCandidates);
 
     } /* end of the factor loop, finish all scales in pyramid*/
 
+
+
   if( minNeighbors != 0)
     {
+      printf("gets here");
       groupRectangles(allCandidates, minNeighbors, GROUP_EPS);
     }
 
@@ -317,26 +325,26 @@ void setImageForCascadeClassifier( myCascade* _cascade, MyIntImage* _sum, MyIntI
         tr.height = rectangles_array[r_index + 3 + k*4];
         if (k < 2)
     {
-      scaled_rectangles_array[r_index + k*4] = (sum->data + sum->width*(tr.y ) + (tr.x )) ;
-      scaled_rectangles_array[r_index + k*4 + 1] = (sum->data + sum->width*(tr.y ) + (tr.x  + tr.width)) ;
-      scaled_rectangles_array[r_index + k*4 + 2] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x ));
-      scaled_rectangles_array[r_index + k*4 + 3] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x  + tr.width));
+      scaled_rectangles_array[r_index + k*4] = (sum->width*(tr.y ) + (tr.x )) ;
+      scaled_rectangles_array[r_index + k*4 + 1] = (sum->width*(tr.y ) + (tr.x  + tr.width)) ;
+      scaled_rectangles_array[r_index + k*4 + 2] = (sum->width*(tr.y  + tr.height) + (tr.x ));
+      scaled_rectangles_array[r_index + k*4 + 3] = (sum->width*(tr.y  + tr.height) + (tr.x  + tr.width));
     }
         else
     {
       if ((tr.x == 0)&& (tr.y == 0) &&(tr.width == 0) &&(tr.height == 0))
         {
-          scaled_rectangles_array[r_index + k*4] = NULL ;
-          scaled_rectangles_array[r_index + k*4 + 1] = NULL ;
-          scaled_rectangles_array[r_index + k*4 + 2] = NULL;
-          scaled_rectangles_array[r_index + k*4 + 3] = NULL;
+          scaled_rectangles_array[r_index + k*4] = 0;
+          scaled_rectangles_array[r_index + k*4 + 1] = 0;
+          scaled_rectangles_array[r_index + k*4 + 2] = 0;
+          scaled_rectangles_array[r_index + k*4 + 3] = 0;
         }
       else
         {
-          scaled_rectangles_array[r_index + k*4] = (sum->data + sum->width*(tr.y ) + (tr.x )) ;
-          scaled_rectangles_array[r_index + k*4 + 1] = (sum->data + sum->width*(tr.y ) + (tr.x  + tr.width)) ;
-          scaled_rectangles_array[r_index + k*4 + 2] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x ));
-          scaled_rectangles_array[r_index + k*4 + 3] = (sum->data + sum->width*(tr.y  + tr.height) + (tr.x  + tr.width));
+          scaled_rectangles_array[r_index + k*4] = (sum->width*(tr.y ) + (tr.x )) ;
+          scaled_rectangles_array[r_index + k*4 + 1] = (sum->width*(tr.y ) + (tr.x  + tr.width)) ;
+          scaled_rectangles_array[r_index + k*4 + 2] = (sum->width*(tr.y  + tr.height) + (tr.x ));
+          scaled_rectangles_array[r_index + k*4 + 3] = (sum->width*(tr.y  + tr.height) + (tr.x  + tr.width));
         }
     } /* end of branch if(k<2) */
       } /* end of k loop*/
@@ -353,38 +361,38 @@ void setImageForCascadeClassifier( myCascade* _cascade, MyIntImage* _sum, MyIntI
  * More info:
  * http://en.wikipedia.org/wiki/Haar-like_features
  ***************************************************/
-inline int evalWeakClassifier(int variance_norm_factor, int p_offset, int tree_index, int w_index, int r_index )
-{
+// inline int evalWeakClassifier(int variance_norm_factor, int p_offset, int tree_index, int w_index, int r_index )
+// {
 
-  /* the node threshold is multiplied by the standard deviation of the image */
-  int t = tree_thresh_array[tree_index] * variance_norm_factor;
+//   /* the node threshold is multiplied by the standard deviation of the image */
+//   int t = tree_thresh_array[tree_index] * variance_norm_factor;
 
-  int sum = (*(scaled_rectangles_array[r_index] + p_offset)
-       - *(scaled_rectangles_array[r_index + 1] + p_offset)
-       - *(scaled_rectangles_array[r_index + 2] + p_offset)
-       + *(scaled_rectangles_array[r_index + 3] + p_offset))
-    * weights_array[w_index];
+//   int sum = (*(scaled_rectangles_array[r_index] + p_offset)
+//        - *(scaled_rectangles_array[r_index + 1] + p_offset)
+//        - *(scaled_rectangles_array[r_index + 2] + p_offset)
+//        + *(scaled_rectangles_array[r_index + 3] + p_offset))
+//     * weights_array[w_index];
 
 
-  sum += (*(scaled_rectangles_array[r_index+4] + p_offset)
-    - *(scaled_rectangles_array[r_index + 5] + p_offset)
-    - *(scaled_rectangles_array[r_index + 6] + p_offset)
-    + *(scaled_rectangles_array[r_index + 7] + p_offset))
-    * weights_array[w_index + 1];
+//   sum += (*(scaled_rectangles_array[r_index+4] + p_offset)
+//     - *(scaled_rectangles_array[r_index + 5] + p_offset)
+//     - *(scaled_rectangles_array[r_index + 6] + p_offset)
+//     + *(scaled_rectangles_array[r_index + 7] + p_offset))
+//     * weights_array[w_index + 1];
 
-  if ((scaled_rectangles_array[r_index+8] != NULL))
-    sum += (*(scaled_rectangles_array[r_index+8] + p_offset)
-      - *(scaled_rectangles_array[r_index + 9] + p_offset)
-      - *(scaled_rectangles_array[r_index + 10] + p_offset)
-      + *(scaled_rectangles_array[r_index + 11] + p_offset))
-      * weights_array[w_index + 2];
+//   if ((scaled_rectangles_array[r_index+8] != NULL))
+//     sum += (*(scaled_rectangles_array[r_index+8] + p_offset)
+//       - *(scaled_rectangles_array[r_index + 9] + p_offset)
+//       - *(scaled_rectangles_array[r_index + 10] + p_offset)
+//       + *(scaled_rectangles_array[r_index + 11] + p_offset))
+//       * weights_array[w_index + 2];
 
-  if(sum >= t)
-    return alpha2_array[tree_index];
-  else
-    return alpha1_array[tree_index];
+//   if(sum >= t)
+//     return alpha2_array[tree_index];
+//   else
+//     return alpha1_array[tree_index];
 
-}
+// }
 
 
 
@@ -392,18 +400,30 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
 {
 
   int p_offset, pq_offset;
-  int i, j;
+  //int i, j;
   unsigned int mean;
   unsigned int variance_norm_factor;
   int haar_counter = 0;
   int w_index = 0;
   int r_index = 0;
-  int stage_sum;
+  //int stage_sum;
   myCascade* cascade;
   cascade = _cascade;
+  int height = cascade->orig_window_size.height;
+  int *stage_sum_array = (int*)malloc(cascade->n_stages* sizeof(int));
+  int *stage_sum_array_cu;
+  int *scaled_rectangles_array_cu;
+  int *weights_array_cu;
+  int *alpha1_array_cu;
+  int *alpha2_array_cu;
+  int *tree_thresh_array_cu;
+  int *stages_array_cu;
+  int* sum_data = cascade->p0;
+  int* sum_data_cu;
   
   p_offset = pt.y * (cascade->sum.width) + pt.x;
   pq_offset = pt.y * (cascade->sqsum.width) + pt.x;
+  int imageSize = cascade->sum.width* cascade->sum.height; 
 
   /**************************************************************************
    * Image normalization
@@ -432,6 +452,69 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
   else
     variance_norm_factor = 1;
 
+
+
+  int blocks;
+ 
+  int numthreads = cascade->n_stages;
+  
+  //if (height>cascade->n_stages){
+	// 	blocks = ceil(height/(float)cascade->n_stages);
+	// } else {
+	// 	blocks = 1;
+	// }
+
+  blocks = 1;
+
+  cudaMalloc((void **)&stage_sum_array_cu,sizeof(int)*cascade->n_stages);
+  cudaMalloc((void**) &tree_thresh_array_cu, sizeof(int)*haar_nodes*12);
+	cudaMalloc((void**) &scaled_rectangles_array_cu, sizeof(int)*haar_nodes*12);
+	cudaMalloc((void**) &weights_array_cu, sizeof(int)*haar_nodes*3);
+	cudaMalloc((void**) &alpha1_array_cu, sizeof(int)*haar_nodes);
+	cudaMalloc((void**) &alpha2_array_cu, sizeof(int)*haar_nodes);
+	cudaMalloc((void**) &stages_array_cu, sizeof(int)*cascade->n_stages);
+  cudaMalloc((void**) &sum_data_cu, sizeof(int)*imageSize);
+
+
+  cudaMemcpy(stage_sum_array_cu, stage_sum_array, sizeof(int)*cascade->n_stages, cudaMemcpyHostToDevice);
+  cudaMemcpy(tree_thresh_array_cu, tree_thresh_array, sizeof(int)*haar_nodes*12, cudaMemcpyHostToDevice);
+	cudaMemcpy(scaled_rectangles_array_cu, scaled_rectangles_array, sizeof(int)*haar_nodes*12, cudaMemcpyHostToDevice);
+	cudaMemcpy(weights_array_cu, weights_array, sizeof(int)*haar_nodes*3, cudaMemcpyHostToDevice);
+	cudaMemcpy(alpha1_array_cu, alpha1_array, sizeof(int)*haar_nodes, cudaMemcpyHostToDevice);
+	cudaMemcpy(alpha2_array_cu, alpha2_array, sizeof(int)*haar_nodes, cudaMemcpyHostToDevice);
+	cudaMemcpy(stages_array_cu, stages_array, sizeof(int)*cascade->n_stages, cudaMemcpyHostToDevice);
+
+  cudaMemcpy(sum_data_cu, sum_data, sizeof(int)*imageSize, cudaMemcpyHostToDevice);
+
+
+  evalWeakClassifier<<<blocks, numthreads>>>(variance_norm_factor, p_offset, haar_counter, w_index, r_index, stage_sum_array_cu, 
+                                    stages_array_cu, tree_thresh_array_cu, scaled_rectangles_array_cu, weights_array_cu, alpha1_array_cu,
+                                    alpha2_array_cu, sum_data_cu);
+
+
+  //printf("got out\n");
+  cudaMemcpy(stage_sum_array, stage_sum_array_cu, sizeof(int)*cascade->n_stages, cudaMemcpyDeviceToHost);
+
+  cudaFree(stage_sum_array_cu);
+	cudaFree(scaled_rectangles_array_cu); 
+	cudaFree(weights_array_cu); 
+	cudaFree(alpha1_array_cu);
+	cudaFree(alpha2_array_cu); 
+  cudaFree(tree_thresh_array_cu);
+
+  for(int i = 0; i < cascade->n_stages; i++){
+    if(stage_sum_array[i] < 0.4*stages_thresh_array[i]){
+      return -i;
+    }
+  }
+  return 1;
+
+
+
+
+
+
+
   /**************************************************
    * The major computation happens here.
    * For each scale in the image pyramid,
@@ -449,8 +532,8 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
    * except that filter results need to be merged,
    * and compared with a per-stage threshold.
    *************************************************/
-  for( i = start_stage; i < cascade->n_stages; i++ )
-    {
+  // for( i = start_stage; i < cascade->n_stages; i++ )
+  //   {
 
       /****************************************************
        * A shared variable that induces false dependency
@@ -460,19 +543,21 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
        * e.g., using stage_sum_array[number_of_threads].
        * Then threads only need to sync at the end
        ***************************************************/
-      stage_sum = 0;
+      // stage_sum = 0;
 
-      for( j = 0; j < stages_array[i]; j++ )
-      {
-        /**************************************************
-         * Send the shifted window to a haar filter.
-         **************************************************/
-        stage_sum += evalWeakClassifier(variance_norm_factor, p_offset, haar_counter, w_index, r_index);
-        n_features++;
-        haar_counter++;
-        w_index+=3;
-        r_index+=12;
-      } /* end of j loop */
+
+
+      // for( j = 0; j < stages_array[i]; j++ )
+      // {
+      //   /**************************************************
+      //    * Send the shifted window to a haar filter.
+      //    **************************************************/
+      //   stage_sum += evalWeakClassifier(variance_norm_factor, p_offset, haar_counter, w_index, r_index);
+      //   n_features++;
+      //   haar_counter++;
+      //   w_index+=3;
+      //   r_index+=12;
+      // } /* end of j loop */
 
       /**************************************************************
        * threshold of the stage. 
@@ -482,12 +567,12 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
        * Otherwise, a face is detected (1)
        **************************************************************/
 
-      /* the number "0.4" is empirically chosen for 5kk73 */
-      if( stage_sum < 0.4*stages_thresh_array[i] ){
-       return -i;
-      } /* end of the per-stage thresholding */
-    } /* end of i loop */
-  return 1;
+    //   /* the number "0.4" is empirically chosen for 5kk73 */
+    //   if( stage_sum < 0.4*stages_thresh_array[i] ){
+    //    return -i;
+    //   } /* end of the per-stage thresholding */
+    // } /* end of i loop */
+  //return 1;
 }
 
 
@@ -554,6 +639,7 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
        * The same cascade filter is used each time
        ********************************************/
       result = runCascadeClassifier( cascade, p, 0 );
+      
 
       /*******************************************************
        * If a face is detected,
@@ -582,98 +668,42 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
  * More info:
  * http://en.wikipedia.org/wiki/Summed_area_table
  ****************************************************/
-// void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum )
-// {
-//   int x, y, s, sq, t, tq;
-//   unsigned char it;
-//   int height = src->height;
-//   int width = src->width;
-//   unsigned char *data = src->data;
-//   int * sumData = sum->data;
-//   int * sqsumData = sqsum->data;
-
-//   // CUDA Point
-//   for( y = 0; y < height; y++)
-//     {
-//       s = 0;
-//       sq = 0;
-//       /* loop over the number of columns */
-//       for( x = 0; x < width; x ++)
-//       {
-//         it = data[y*width+x];
-//         /* sum of the current row (integer)*/
-//         s += it; 
-//         sq += it*it;
-
-//         t = s;
-//         tq = sq;
-//         if (y != 0)
-//         {
-//           t += sumData[(y-1)*width+x];
-//           tq += sqsumData[(y-1)*width+x];
-//         }
-//         sumData[y*width+x]=t;
-//         sqsumData[y*width+x]=tq;
-//       }
-//     }
-// }
-
-void integralImages(MyImage *src, MyIntImage *sum, MyIntImage *sqsum){
-
-	int height = src->height;
-	int width = src->width;
-
-	int size = height*width;
-
-	int* sumdata = sum->data;
-	int* sqsumdata = sqsum->data;
-	unsigned char * data = src->data;
-	
-	int *sumdata_cu;
-	int *sqsumdata_cu;
-	unsigned char * data_cu;
-
-	
-
-	cudaMalloc((void **)&sumdata_cu,sizeof(int)*size);
-	cudaMalloc((void **)&sqsumdata_cu,sizeof(int)*size);		
-	cudaMalloc((void **)&data_cu,sizeof(unsigned char)*size);
-	
-
-	cudaMemcpy(data_cu, data, sizeof(unsigned char)*size, cudaMemcpyHostToDevice);
-
-	int blocks, threadsPerBlock;
-	
-	if (height>THREADS){
-		blocks = ceil(height/(float)THREADS);
-	} else {
-		blocks = 1;
-
-	}
-	threadsPerBlock = THREADS;
+void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum )
+{
+  int x, y, s, sq, t, tq;
+  unsigned char it;
+  int height = src->height;
+  int width = src->width;
+  unsigned char *data = src->data;
+  int * sumData = sum->data;
+  int * sqsumData = sqsum->data;
 
 
-	integralImageRows<<<blocks,threadsPerBlock>>>(sumdata_cu, sqsumdata_cu, data_cu, width, height);
-	cudaDeviceSynchronize();
+  for( y = 0; y < height; y++)
+    {
+      s = 0;
+      sq = 0;
+      /* loop over the number of columns */
+      for( x = 0; x < width; x ++)
+      {
+        it = data[y*width+x];
+        /* sum of the current row (integer)*/
+        s += it; 
+        sq += it*it;
 
-	if (width>THREADS){
-		blocks = ceil(width/THREADS);
-	} else {
-		blocks = 1;
-	}
+        t = s;
+        tq = sq;
+        if (y != 0)
+        {
+          t += sumData[(y-1)*width+x];
+          tq += sqsumData[(y-1)*width+x];
+        }
+        sumData[y*width+x]=t;
+        sqsumData[y*width+x]=tq;
+      }
+    }
+}
 
-	integralImageCols<<<blocks,threadsPerBlock>>>(sumdata_cu, sqsumdata_cu, width, height);
-
-	cudaDeviceSynchronize();
-
-	
-	cudaMemcpy(sumdata, sumdata_cu, sizeof(int)*size, cudaMemcpyDeviceToHost);
-	cudaMemcpy(sqsumdata, sqsumdata_cu, sizeof(int)*size, cudaMemcpyDeviceToHost);
-	cudaFree(sumdata_cu);
-	cudaFree(sqsumdata_cu);
-	cudaFree(data_cu);
-
-} 
 
 /***********************************************************
  * This function downsample an image using nearest neighbor
@@ -758,6 +788,8 @@ void readTextClassifier()//(myCascade * cascade)
     }
   fclose(finfo);
 
+  haar_nodes = total_nodes;
+
 
   /* TODO: use matrices where appropriate */
   /***********************************************
@@ -766,7 +798,7 @@ void readTextClassifier()//(myCascade * cascade)
    * some arrays need to be splitted or duplicated
    **********************************************/
   rectangles_array = (int *)malloc(sizeof(int)*total_nodes*12);
-  scaled_rectangles_array = (int **)malloc(sizeof(int*)*total_nodes*12);
+  scaled_rectangles_array = (int *)malloc(sizeof(int*)*total_nodes*12);
   weights_array = (int *)malloc(sizeof(int)*total_nodes*3);
   alpha1_array = (int*)malloc(sizeof(int)*total_nodes);
   alpha2_array = (int*)malloc(sizeof(int)*total_nodes);
