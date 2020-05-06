@@ -172,6 +172,12 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
 	cudaMalloc((void**) &stages_thresh_array_cu, sizeof(int)*cascade->n_stages);
 	cudaMalloc((void**) &stages_array_cu, sizeof(int)*cascade->n_stages);
 
+	cudaMemcpy(weights_array_cu, weights_array, sizeof(int)*haar_nodes*3, cudaMemcpyHostToDevice);
+	cudaMemcpy(alpha1_array_cu, alpha1_array, sizeof(int)*haar_nodes, cudaMemcpyHostToDevice);
+	cudaMemcpy(alpha2_array_cu, alpha2_array, sizeof(int)*haar_nodes, cudaMemcpyHostToDevice);
+	cudaMemcpy(stages_thresh_array_cu, stages_thresh_array, sizeof(int)*cascade->n_stages, cudaMemcpyHostToDevice);
+	cudaMemcpy(stages_array_cu, stages_array, sizeof(int)*cascade->n_stages, cudaMemcpyHostToDevice);
+
 
 	/* initial scaling factor */
 	factor = 1;
@@ -415,7 +421,6 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
 	
 
 
-
 	cudaMalloc((void**) &result_cu, sizeof(int)*x2*y2); 
 	cudaMalloc((void**) &sqsum_data_cu, sizeof(int)*imageSize);
 	cudaMalloc((void**) &sum_data_cu, sizeof(int)*imageSize);
@@ -423,11 +428,7 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
 
 	cudaMemcpy(tree_thresh_array_cu, tree_thresh_array, sizeof(int)*haar_nodes*12, cudaMemcpyHostToDevice);
 	cudaMemcpy(scaled_rectangles_array_cu, scaled_rectangles_array, sizeof(int)*haar_nodes*12, cudaMemcpyHostToDevice);
-	cudaMemcpy(weights_array_cu, weights_array, sizeof(int)*haar_nodes*3, cudaMemcpyHostToDevice);
-	cudaMemcpy(alpha1_array_cu, alpha1_array, sizeof(int)*haar_nodes, cudaMemcpyHostToDevice);
-	cudaMemcpy(alpha2_array_cu, alpha2_array, sizeof(int)*haar_nodes, cudaMemcpyHostToDevice);
-	cudaMemcpy(stages_thresh_array_cu, stages_thresh_array, sizeof(int)*cascade->n_stages, cudaMemcpyHostToDevice);
-	cudaMemcpy(stages_array_cu, stages_array, sizeof(int)*cascade->n_stages, cudaMemcpyHostToDevice);
+
 
 	cudaMemcpy(sqsum_data_cu, sqsum_data, sizeof(int)*imageSize, cudaMemcpyHostToDevice);
 	cudaMemcpy(sum_data_cu, sum_data, sizeof(int)*imageSize, cudaMemcpyHostToDevice);
