@@ -42,6 +42,7 @@ int predicate(float eps, MyRect& r1, MyRect& r2)
 
 void groupRectangles(std::vector<MyRect>& rectList, int groupThreshold, float eps)
 {
+  printf("entered rectangles\n");
   if( groupThreshold <= 0 || rectList.empty() )
     return;
 

@@ -217,23 +217,29 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
        * the same cascade filter is invoked each time
        ***************************************************/
 
-      printf("here %d %d\n", sum1->height, sum1->width);
       ScaleImage_Invoker(cascade, factor, sum1->height, sum1->width,
        allCandidates);
+      
+      printf("finished scaleimage\n");
 
     } /* end of the factor loop, finish all scales in pyramid*/
 
 
-
+  printf("going into mineighbors\n");
+  printf("%d\n", minNeighbors);
   if( minNeighbors != 0)
-    {
-      printf("gets here");
-      groupRectangles(allCandidates, minNeighbors, GROUP_EPS);
-    }
+  {
+    groupRectangles(allCandidates, minNeighbors, GROUP_EPS);
+  }
+
+  printf("here");
 
   freeImage(img1);
+  printf("freed img1\n");
   freeSumImage(sum1);
+  printf("freed sum1\n");
   freeSumImage(sqsum1);
+  printf("freed sqsum1\n");
   return allCandidates;
 
 }
@@ -409,8 +415,7 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
   //int stage_sum;
   myCascade* cascade;
   cascade = _cascade;
-  int height = cascade->orig_window_size.height;
-  int *stage_sum_array = (int*)malloc(cascade->n_stages* sizeof(int));
+  //int *stage_sum_array = (int*)calloc(cascade->n_stages, sizeof(int));
   int *stage_sum_array_cu;
   int *scaled_rectangles_array_cu;
   int *weights_array_cu;
@@ -418,6 +423,7 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
   int *alpha2_array_cu;
   int *tree_thresh_array_cu;
   int *stages_array_cu;
+  int *stages_thresh_array_cu;
   int* sum_data = cascade->p0;
   int* sum_data_cu;
   
@@ -448,7 +454,8 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
    * http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#standard-functions
    **********************************************/
   if( variance_norm_factor > 0 )
-    variance_norm_factor = int_sqrt(variance_norm_factor);
+    //variance_norm_factor = int_sqrt(variance_norm_factor);
+    variance_norm_factor = (int)sqrtf((float)variance_norm_factor);	
   else
     variance_norm_factor = 1;
 
@@ -458,42 +465,47 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
  
   int numthreads = cascade->n_stages;
   
-  //if (height>cascade->n_stages){
-	// 	blocks = ceil(height/(float)cascade->n_stages);
-	// } else {
-	// 	blocks = 1;
-	// }
-
   blocks = 1;
 
-  cudaMalloc((void **)&stage_sum_array_cu,sizeof(int)*cascade->n_stages);
+
+  
   cudaMalloc((void**) &tree_thresh_array_cu, sizeof(int)*haar_nodes*12);
 	cudaMalloc((void**) &scaled_rectangles_array_cu, sizeof(int)*haar_nodes*12);
 	cudaMalloc((void**) &weights_array_cu, sizeof(int)*haar_nodes*3);
 	cudaMalloc((void**) &alpha1_array_cu, sizeof(int)*haar_nodes);
 	cudaMalloc((void**) &alpha2_array_cu, sizeof(int)*haar_nodes);
+  cudaMalloc((void**) &stages_thresh_array_cu, sizeof(int)*cascade->n_stages);
 	cudaMalloc((void**) &stages_array_cu, sizeof(int)*cascade->n_stages);
   cudaMalloc((void**) &sum_data_cu, sizeof(int)*imageSize);
 
+  cudaMalloc((void**) &stage_sum_array_cu, sizeof(int)*cascade->n_stages);
 
-  cudaMemcpy(stage_sum_array_cu, stage_sum_array, sizeof(int)*cascade->n_stages, cudaMemcpyHostToDevice);
+
+
+  int *stage_sum_array = (int*)calloc(cascade->n_stages, sizeof(int));
+
+
   cudaMemcpy(tree_thresh_array_cu, tree_thresh_array, sizeof(int)*haar_nodes*12, cudaMemcpyHostToDevice);
 	cudaMemcpy(scaled_rectangles_array_cu, scaled_rectangles_array, sizeof(int)*haar_nodes*12, cudaMemcpyHostToDevice);
 	cudaMemcpy(weights_array_cu, weights_array, sizeof(int)*haar_nodes*3, cudaMemcpyHostToDevice);
 	cudaMemcpy(alpha1_array_cu, alpha1_array, sizeof(int)*haar_nodes, cudaMemcpyHostToDevice);
 	cudaMemcpy(alpha2_array_cu, alpha2_array, sizeof(int)*haar_nodes, cudaMemcpyHostToDevice);
+  cudaMemcpy(stage_sum_array_cu, stage_sum_array, sizeof(int)*cascade->n_stages, cudaMemcpyHostToDevice);
 	cudaMemcpy(stages_array_cu, stages_array, sizeof(int)*cascade->n_stages, cudaMemcpyHostToDevice);
-
+  cudaMemcpy(stages_thresh_array_cu, stages_thresh_array, sizeof(int)*cascade->n_stages, cudaMemcpyHostToDevice);
   cudaMemcpy(sum_data_cu, sum_data, sizeof(int)*imageSize, cudaMemcpyHostToDevice);
 
 
   evalWeakClassifier<<<blocks, numthreads>>>(variance_norm_factor, p_offset, haar_counter, w_index, r_index, stage_sum_array_cu, 
                                     stages_array_cu, tree_thresh_array_cu, scaled_rectangles_array_cu, weights_array_cu, alpha1_array_cu,
-                                    alpha2_array_cu, sum_data_cu);
+                                    alpha2_array_cu, sum_data_cu, stages_thresh_array_cu);
 
 
-  //printf("got out\n");
+  cudaDeviceSynchronize();
+  
   cudaMemcpy(stage_sum_array, stage_sum_array_cu, sizeof(int)*cascade->n_stages, cudaMemcpyDeviceToHost);
+  
+  cudaDeviceSynchronize();
 
   cudaFree(stage_sum_array_cu);
 	cudaFree(scaled_rectangles_array_cu); 
@@ -501,12 +513,23 @@ int runCascadeClassifier( myCascade* _cascade, MyPoint pt, int start_stage )
 	cudaFree(alpha1_array_cu);
 	cudaFree(alpha2_array_cu); 
   cudaFree(tree_thresh_array_cu);
+  cudaFree(stages_thresh_array_cu);
+  cudaFree(stages_array_cu);
+
 
   for(int i = 0; i < cascade->n_stages; i++){
-    if(stage_sum_array[i] < 0.4*stages_thresh_array[i]){
+    if(i==0){
+      //printf("i: 0, cpu: %d \n", stage_sum_array[i]);
+    }
+    if(stage_sum_array[i] < 0){
       return -i;
     }
   }
+
+  //printf("point x: %d, point y: %d", pt.x, pt.y);
+  //printf("adding the rectangle");
+  //exit(0);
+
   return 1;
 
 
@@ -639,6 +662,11 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
        * The same cascade filter is used each time
        ********************************************/
       result = runCascadeClassifier( cascade, p, 0 );
+
+      // if(iter_counter == 2){
+      //   exit(0);
+      // }
+
       
 
       /*******************************************************
@@ -655,9 +683,9 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
        *******************************************************/
       if( result > 0 )
       {
+        //printf("added rectangle");
         MyRect r = {myRound(x*factor), myRound(y*factor), winSize.width, winSize.height};
         vec->push_back(r);
-        
       }
     }
 }
