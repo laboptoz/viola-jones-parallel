@@ -161,11 +161,11 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
 
       /* if the actual scaled image is smaller than the original detection window, break */
       if( sz1.width < 0 || sz1.height < 0 )
-	break;
+	        break;
 
       /* if a minSize different from the original detection window is specified, continue to the next scaling */
       if( winSize.width < minSize.width || winSize.height < minSize.height )
-	continue;
+	        continue;
 
       /*************************************
        * Set the width and height of 
@@ -493,7 +493,6 @@ int runCascadeClassifier( myCascade* _cascade, int x, int y, int start_stage )
      * 
      * To avoid it from limiting parallelism,
      * we can duplicate it multiple times,
-     * e.g., using stage_sum_array[number_of_threads].
      * Then threads only need to sync at the end
      ***************************************************/
     stage_sum = 0;
@@ -522,9 +521,6 @@ int runCascadeClassifier( myCascade* _cascade, int x, int y, int start_stage )
     } /* end of the per-stage thresholding */
   } /* end of i loop */
 
-  printf("adding a rectangle\n");
-
-  
 
   return 1;
 }
@@ -536,8 +532,6 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
   myCascade* cascade = _cascade;
 
   float factor = _factor;
-  // MyPoint p;
-  // int result;
   int y1, y2, x2, step;
   
 
@@ -585,7 +579,6 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
    * Merge functions/loops to increase locality
    * Tiling to increase computation-to-memory ratio
    *********************************************/
-  // #pragma omp declare reduction (mer : std::vector<MyRect> : omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
   
   #pragma omp parallel for schedule(dynamic)
   for( int x = 0; x <= x2; x += 1 )
@@ -594,8 +587,6 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
     #pragma omp parallel for schedule(static, 64)
     for( int y = 0; y <= y2; y += 1 )
     {
-      // p.x = x;
-      // p.y = y;
       myCascade* cascade_cpy = _cascade;
 
       /*********************************************
@@ -620,7 +611,6 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
       if( result > 0 )
       {
         MyRect r = {myRound(x*factor), myRound(y*factor), winSize.width, winSize.height};
-        // printf("adding a rectangle: %d\n", result);
         #pragma omp critical
         vec->push_back(r);
       }
@@ -629,26 +619,9 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
 }
 
 void transpose(int *src, int *dst, int width, int height) {
-  // #pragma omp parallel for
-  // for (int x = 0; x < height*width; x++) {
-  // //   for (int y = 0; y < width; y++) {
-
-  // //   }
-  //   int row = x/width;
-  //   int col = x%width;
-  //   dst[x] = src[col*height+row];
-  // }
-    // // int i,j;
-    // #pragma omp parallel for
-    // for(int i=0; i<width; i++) {
-    //     for(int j=0; j<height; j++) {
-    //         dst[j*width+i] = src[i*height+j];
-    //     }
-    // }
 
   // version with blocking
   int blocksize = 16;
-
   #pragma omp parallel for schedule(static, 2)
   for (int i = 0; i < width; i += blocksize) {
     for (int j = 0; j < height; j += blocksize) {
@@ -659,20 +632,6 @@ void transpose(int *src, int *dst, int width, int height) {
       }
     }
   }
-
-    // // int i,j, row, col;
-    // int blocksize = 16;
-
-    // #pragma omp parallel for private(i, j, row, col) schedule(static, 2)
-    // for (int i = 0; i < MSIZE; i += blocksize) {
-    //     for (int j = 0; j < MSIZE; j += blocksize) {
-    //         for (int row = i; row < i + blocksize && row < MSIZE; row++) {
-    //             for (int col = j; col < j + blocksize && col < MSIZE; col++) {
-    //                 d[row][ col] = c[col][row];
-    //             }
-    //         }
-    //     }
-    // }
 }
 
 /*****************************************************
@@ -691,17 +650,12 @@ void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum, int iter 
   int *sqsumData = sqsum->data;
 
   if (iter <= 10) {
-    std::cout << "parallelizing \n";
     #pragma omp parallel for
     for (int y = 0; y < height; y++) {
-      
-      // int s = 0;
-      // int sq = 0;
+
       unsigned char it;
       for (int x = 1; x < width; x++) {
         it = data[y*width+x];
-        // s += it;
-        // sq += it*it;
         sumData[y*width+x] = sumData[y*width+x-1] + it;
         sqsumData[y*width+x] = sqsumData[y*width+x-1] + (it*it);
       }
@@ -709,13 +663,9 @@ void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum, int iter 
 
     #pragma omp parallel for
     for (int x = 0; x < width; x++) {
-      // int s = 0;
-      // int sq = 0;
+
       for (int y = 1; y < height; y++) {
-        // tsumData[y*width+x] += tsumData[(y-1)*width+x];
-        // tsqsumData[y*width+x] += tsqsumData[(y-1)*width+x];
-        // s += sumData[y*width+x];
-        // sq += sqsumData[y*width+x];
+
         sumData[y*width+x] += sumData[(y-1)*width+x];
         sqsumData[y*width+x] += sqsumData[(y-1)*width+x];
       }
@@ -758,33 +708,6 @@ void integralImages( MyImage *src, MyIntImage *sum, MyIntImage *sqsum, int iter 
   }
     
   }
-  /* row sum */
-  
-
-  // transpose(tsumData, sumData, height, width);
-  // transpose(tsqsumData, sqsumData, height, width);
-
-  // #pragma omp parallel for
-  // for (int y = 0; y < width; y++) {
-  //   int s = 0;
-  //   int sq = 0;
-  //   int it, itt;
-  //   for (int x = 0; x < height; x++) {
-  //     it = sumData[y*height+x];
-  //     itt = sqsumData[y*height+x];
-  //     s += it;
-  //     sq += itt;
-  //     tsumData[y*height+x] = s;
-  //     tsqsumData[y*height+x] = sq;
-  //   } 
-  // }
-
-
-  // // transpose(tsumData, sumData, width, height);
-  // transpose(tsqsumData, sqsumData, width, height);
-  
-
-  /* loop over the number of row */
 
 }
 
@@ -870,8 +793,6 @@ void readTextClassifier()//(myCascade * cascade)
     }
   fclose(finfo);
 
-
-  /* TODO: use matrices where appropriate */
   /***********************************************
    * Allocate a lot of array structures
    * Note that, to increase parallelism,
@@ -929,9 +850,6 @@ void readTextClassifier()//(myCascade * cascade)
 	      if (fgets (mystring , 12 , fp) != NULL)
 		{
 		  weights_array[w_index] = atoi(mystring);
-		  /* Shift value to avoid overflow in the haar evaluation */
-		  /*TODO: make more general */
-		  // weights_array[w_index]>>=8;
 		}
 	      else
 		break;
