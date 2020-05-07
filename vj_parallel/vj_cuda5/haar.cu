@@ -1,3 +1,6 @@
+
+
+
 /*
  *  TU Eindhoven
  *  Eindhoven, The Netherlands
@@ -77,7 +80,7 @@ void ScaleImage_Invoker( myCascade* _cascade, float _factor, int sum_row, int su
 void nearestNeighbor (MyImage *src, MyImage *dst);
 
 /* rounding function */
-inline  int  myRound( float value )
+inline  int  myRound( float value ) 
 {
   return (int)(value + (value >= 0 ? 0.5 : -0.5));
 }
@@ -217,9 +220,26 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
        * the same cascade filter is invoked each time
        ***************************************************/
 
-      printf("here %d %d\n", sum1->height, sum1->width);
-      ScaleImage_Invoker(cascade, factor, sum1->height, sum1->width,
-       allCandidates);
+      /*********************************************
+       * For the 5kk73 assignment,
+       * here is a skeleton
+       ********************************************/
+      /* malloc cascade filter on GPU memory*/
+      int filter_count = 0;
+      for(int i = 0; i < cascade->n_stages; i++ ){
+	    filter_count += stages_array[i];
+      }
+      int size_per_filter = 18;
+      int* gpu_cascade;
+      cudaMalloc((void**) &gpu_cascade, filter_count*size_per_filter*sizeof(int));
+
+      dim3 threads = dim3(64, 1);
+      dim3 grid = dim3(filter_count/64, 1);
+
+      cudaFree(gpu_cascade);
+      /*********************************************
+       * End of the GPU skeleton
+       ********************************************/
 
     } /* end of the factor loop, finish all scales in pyramid*/
 
@@ -227,7 +247,6 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
 
   if( minNeighbors != 0)
     {
-      printf("gets here");
       groupRectangles(allCandidates, minNeighbors, GROUP_EPS);
     }
 
