@@ -41,7 +41,7 @@
 
 #include "omp.h"
 
-/* TODO: use matrices */
+
 /* classifier parameters */
 /************************************
  * Notes:
@@ -183,7 +183,6 @@ std::vector<MyRect> detectObjects( MyImage* _img, MySize minSize, MySize maxSize
        * building image pyramid by downsampling
        * downsampling using nearest neighbor
        **************************************/
-      // auto start, stop, duration; 
       std::cout << "----------------------\n";
 
       auto start1 = high_resolution_clock::now(); 
@@ -753,7 +752,7 @@ void nearestNeighbor (MyImage *src, MyImage *dst)
     }
 }
 
-void readTextClassifier()//(myCascade * cascade)
+void readTextClassifier()
 {
   /*number of stages of the cascade classifier*/
   int stages;
